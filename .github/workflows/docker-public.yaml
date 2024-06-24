@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Build and Push Docker Images
 
 on:
   push:
@@ -8,14 +8,24 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  PROBE_IMAGE_NAME: ${{ github.repository }}/probe
 
 jobs:
-  build-and-push-image:
+  build-and-push-probe:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+
+    # Only run this job if relevant files for the probe have changed
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && 
+       (contains(github.event.pull_request.files.*.filename, 'cmd/probe/') ||
+        contains(github.event.pull_request.files.*.filename, 'pkg/') ||
+        contains(github.event.pull_request.files.*.filename, 'probe/') ||
+        contains(github.event.pull_request.files.*.filename, 'go.mod') ||
+        contains(github.event.pull_request.files.*.filename, 'go.sum')))
 
     steps:
       - name: Checkout repository
@@ -32,12 +42,15 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.PROBE_IMAGE_NAME }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
+          file: ./probe/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  # Add similar jobs for API and UI components in the future
