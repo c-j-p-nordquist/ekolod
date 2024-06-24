@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
-	"time"
 
+	"github.com/c-j-p-nordquist/ekolod/pkg/config"
 	"github.com/c-j-p-nordquist/ekolod/pkg/probe"
 	"github.com/c-j-p-nordquist/ekolod/pkg/server"
 	"go.opentelemetry.io/otel/exporters/prometheus"
@@ -12,6 +13,11 @@ import (
 )
 
 func main() {
+	cfg, err := config.Load("config.yaml")
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
+
 	ctx := context.Background()
 
 	exporter, err := prometheus.New()
@@ -24,31 +30,21 @@ func main() {
 
 	prober := probe.NewProber(meter)
 
-	targets := []probe.Target{
-		{
-			Name:     "Example",
-			URL:      "https://example.com",
-			Interval: 10 * time.Second,
-			Timeout:  5 * time.Second,
-		},
-		{
-			Name:     "Google",
-			URL:      "https://www.google.com",
-			Interval: 15 * time.Second,
-			Timeout:  5 * time.Second,
-		},
-	}
-
-	for _, target := range targets {
-		prober.AddTarget(target)
+	for _, target := range cfg.Targets {
+		prober.AddTarget(probe.Target{
+			Name:     target.Name,
+			URL:      target.URL,
+			Interval: target.Interval,
+			Timeout:  target.Timeout,
+		})
 	}
 
 	go prober.RunProbes(ctx)
 
 	srv := server.NewServer(prober, exporter)
 
-	log.Println("Starting server on :8080")
-	if err := srv.Start(":8080"); err != nil {
+	log.Printf("Starting server on :%d", cfg.Server.Port)
+	if err := srv.Start(fmt.Sprintf(":%d", cfg.Server.Port)); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
 }
