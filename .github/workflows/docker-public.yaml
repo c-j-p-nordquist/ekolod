@@ -3,8 +3,24 @@ name: Build and Push Docker Images
 on:
   push:
     branches: [main]
+    paths:
+      - "cmd/probe/**"
+      - "pkg/config/**"
+      - "pkg/probe/**"
+      - "pkg/server/**"
+      - "probe/**"
+      - "go.mod"
+      - "go.sum"
   pull_request:
     branches: [main]
+    paths:
+      - "cmd/probe/**"
+      - "pkg/config/**"
+      - "pkg/probe/**"
+      - "pkg/server/**"
+      - "probe/**"
+      - "go.mod"
+      - "go.sum"
 
 env:
   REGISTRY: ghcr.io
@@ -16,16 +32,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-
-    # Only run this job if relevant files for the probe have changed
-    if: |
-      github.event_name == 'push' ||
-      (github.event_name == 'pull_request' && 
-       (contains(github.event.pull_request.files.*.filename, 'cmd/probe/') ||
-        contains(github.event.pull_request.files.*.filename, 'pkg/') ||
-        contains(github.event.pull_request.files.*.filename, 'probe/') ||
-        contains(github.event.pull_request.files.*.filename, 'go.mod') ||
-        contains(github.event.pull_request.files.*.filename, 'go.sum')))
 
     steps:
       - name: Checkout repository
@@ -52,5 +58,3 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-
-  # Add similar jobs for API and UI components in the future
