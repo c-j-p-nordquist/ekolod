@@ -9,21 +9,37 @@ import (
 )
 
 func main() {
-	target := probe.Target{
-		Name:     "Example",
-		URL:      "https://example.com",
-		Interval: 10 * time.Second,
-		Timeout:  5 * time.Second,
+	prober := probe.NewProber()
+
+	targets := []probe.Target{
+		{
+			Name:     "Example",
+			URL:      "https://example.com",
+			Interval: 10 * time.Second,
+			Timeout:  5 * time.Second,
+		},
+		{
+			Name:     "Google",
+			URL:      "https://www.google.com",
+			Interval: 15 * time.Second,
+			Timeout:  5 * time.Second,
+		},
 	}
 
-	ticker := time.NewTicker(target.Interval)
+	for _, target := range targets {
+		prober.AddTarget(target)
+	}
+
+	go prober.RunProbes()
+
+	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			result := probe.ProbeTarget(target)
-			jsonResult, _ := json.MarshalIndent(result, "", "  ")
+			results := prober.GetResults()
+			jsonResult, _ := json.MarshalIndent(results, "", "  ")
 			fmt.Println(string(jsonResult))
 		}
 	}
