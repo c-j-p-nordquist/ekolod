@@ -1,9 +1,13 @@
 package probe
 
 import (
+	"context"
 	"net/http"
 	"sync"
 	"time"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 )
 
 type Target struct {
@@ -13,24 +17,16 @@ type Target struct {
 	Timeout  time.Duration `json:"timeout"`
 }
 
-type ProbeResult struct {
-	Target       string        `json:"target"`
-	Status       string        `json:"status"`
-	StatusCode   int           `json:"statusCode"`
-	ResponseTime time.Duration `json:"responseTime"`
-	Timestamp    time.Time     `json:"timestamp"`
-}
-
 type Prober struct {
 	targets map[string]Target
-	results map[string]ProbeResult
 	mu      sync.RWMutex
+	meter   metric.Meter
 }
 
-func NewProber() *Prober {
+func NewProber(meter metric.Meter) *Prober {
 	return &Prober{
 		targets: make(map[string]Target),
-		results: make(map[string]ProbeResult),
+		meter:   meter,
 	}
 }
 
@@ -44,38 +40,44 @@ func (p *Prober) RemoveTarget(name string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	delete(p.targets, name)
-	delete(p.results, name)
 }
 
-func (p *Prober) GetResults() map[string]ProbeResult {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	results := make(map[string]ProbeResult)
-	for k, v := range p.results {
-		results[k] = v
-	}
-	return results
-}
+func (p *Prober) RunProbes(ctx context.Context) {
+	upGauge, _ := p.meter.Int64UpDownCounter("http_probe_up")
+	responseTimeHistogram, _ := p.meter.Float64Histogram("http_probe_response_time")
 
-func (p *Prober) RunProbes() {
 	for {
-		p.mu.RLock()
-		targets := make([]Target, 0, len(p.targets))
-		for _, target := range p.targets {
-			targets = append(targets, target)
-		}
-		p.mu.RUnlock()
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			p.mu.RLock()
+			targets := make([]Target, 0, len(p.targets))
+			for _, target := range p.targets {
+				targets = append(targets, target)
+			}
+			p.mu.RUnlock()
 
-		for _, target := range targets {
-			go func(t Target) {
-				result := probeTarget(t)
-				p.mu.Lock()
-				p.results[t.Name] = result
-				p.mu.Unlock()
-			}(target)
-		}
+			for _, target := range targets {
+				go func(t Target) {
+					result := probeTarget(t)
+					attrs := []attribute.KeyValue{
+						attribute.String("target", t.Name),
+						attribute.String("url", t.URL),
+					}
 
-		time.Sleep(1 * time.Second) // Wait before next round of probes
+					if result.Status == "UP" {
+						upGauge.Add(ctx, 1, metric.WithAttributes(attrs...))
+					} else {
+						upGauge.Add(ctx, 0, metric.WithAttributes(attrs...))
+					}
+
+					responseTimeHistogram.Record(ctx, float64(result.ResponseTime.Milliseconds()), metric.WithAttributes(attrs...))
+				}(target)
+			}
+
+			time.Sleep(1 * time.Second) // Wait before next round of probes
+		}
 	}
 }
 
@@ -109,4 +111,12 @@ func probeTarget(target Target) ProbeResult {
 	}
 
 	return result
+}
+
+type ProbeResult struct {
+	Target       string        `json:"target"`
+	Status       string        `json:"status"`
+	StatusCode   int           `json:"statusCode"`
+	ResponseTime time.Duration `json:"responseTime"`
+	Timestamp    time.Time     `json:"timestamp"`
 }

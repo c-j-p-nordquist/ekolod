@@ -1,30 +1,29 @@
 package server
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/c-j-p-nordquist/ekolod/pkg/probe"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/otel/exporters/prometheus"
 )
 
 type Server struct {
-	prober *probe.Prober
+	prober   *probe.Prober
+	exporter *prometheus.Exporter
 }
 
-func NewServer(prober *probe.Prober) *Server {
-	return &Server{prober: prober}
+func NewServer(prober *probe.Prober, exporter *prometheus.Exporter) *Server {
+	return &Server{
+		prober:   prober,
+		exporter: exporter,
+	}
 }
 
 func (s *Server) Start(addr string) error {
-	http.HandleFunc("/results", s.handleResults)
+	http.Handle("/metrics", promhttp.Handler())
 	http.HandleFunc("/health", s.handleHealth)
 	return http.ListenAndServe(addr, nil)
-}
-
-func (s *Server) handleResults(w http.ResponseWriter, r *http.Request) {
-	results := s.prober.GetResults()
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(results)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {

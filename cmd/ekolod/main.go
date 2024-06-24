@@ -1,15 +1,28 @@
 package main
 
 import (
+	"context"
 	"log"
 	"time"
 
 	"github.com/c-j-p-nordquist/ekolod/pkg/probe"
 	"github.com/c-j-p-nordquist/ekolod/pkg/server"
+	"go.opentelemetry.io/otel/exporters/prometheus"
+	"go.opentelemetry.io/otel/sdk/metric"
 )
 
 func main() {
-	prober := probe.NewProber()
+	ctx := context.Background()
+
+	exporter, err := prometheus.New()
+	if err != nil {
+		log.Fatalf("Failed to create Prometheus exporter: %v", err)
+	}
+
+	meterProvider := metric.NewMeterProvider(metric.WithReader(exporter))
+	meter := meterProvider.Meter("ekolod")
+
+	prober := probe.NewProber(meter)
 
 	targets := []probe.Target{
 		{
@@ -30,9 +43,10 @@ func main() {
 		prober.AddTarget(target)
 	}
 
-	go prober.RunProbes()
+	go prober.RunProbes(ctx)
 
-	srv := server.NewServer(prober)
+	srv := server.NewServer(prober, exporter)
+
 	log.Println("Starting server on :8080")
 	if err := srv.Start(":8080"); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
