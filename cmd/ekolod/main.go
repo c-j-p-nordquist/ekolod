@@ -1,11 +1,11 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
+	"log"
 	"time"
 
 	"github.com/c-j-p-nordquist/ekolod/pkg/probe"
+	"github.com/c-j-p-nordquist/ekolod/pkg/server"
 )
 
 func main() {
@@ -32,15 +32,9 @@ func main() {
 
 	go prober.RunProbes()
 
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			results := prober.GetResults()
-			jsonResult, _ := json.MarshalIndent(results, "", "  ")
-			fmt.Println(string(jsonResult))
-		}
+	srv := server.NewServer(prober)
+	log.Println("Starting server on :8080")
+	if err := srv.Start(":8080"); err != nil {
+		log.Fatalf("Server failed to start: %v", err)
 	}
 }
