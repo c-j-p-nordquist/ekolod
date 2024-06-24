@@ -10,6 +10,21 @@ Ekolod is a simple, efficient HTTP probe for monitoring web services, with built
 - YAML-based configuration
 - Easy to deploy and use
 
+## Roadmap
+
+The following features are planned for future releases:
+
+- [ ] Dynamic Target Management: API endpoints to add, remove, or modify probe targets at runtime
+- [ ] Advanced Checks: More sophisticated checks beyond HTTP status codes (e.g., response body content matching, header checks)
+- [ ] Alerting: Integration with alerting systems to notify users when probes fail or meet certain conditions
+- [ ] Web UI: Simple web interface to view probe status and metrics
+- [ ] Authentication: Basic authentication for metrics and management endpoints
+- [ ] Structured Logging: Improved logging for easier debugging and monitoring
+- [ ] Testing: Comprehensive unit and integration tests
+- [ ] Docker Support: Dockerfile for containerization
+- [ ] Helm Chart: For deploying the application in Kubernetes environments
+- [ ] Hot Reload: Ability to reload configuration without restarting the application
+
 ## Quick Start
 
 1. Clone the repository:
