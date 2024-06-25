@@ -1,0 +1,91 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "cmd/**"
+      - "pkg/**"
+      - "probe/**"
+      - "ui/**"
+      - "go.mod"
+      - "go.sum"
+      - "docker-compose.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "cmd/**"
+      - "pkg/**"
+      - "probe/**"
+      - "ui/**"
+      - "go.mod"
+      - "go.sum"
+      - "docker-compose.yml"
+
+env:
+  REGISTRY: ghcr.io
+  PROBE_IMAGE_NAME: ${{ github.repository }}/probe
+  UI_IMAGE_NAME: ${{ github.repository }}/ui
+
+jobs:
+  build-and-push-probe:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Probe
+        id: meta-probe
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.PROBE_IMAGE_NAME }}
+
+      - name: Build and push Probe Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./probe/Dockerfile
+          push: true
+          tags: ${{ steps.meta-probe.outputs.tags }}
+          labels: ${{ steps.meta-probe.outputs.labels }}
+
+  build-and-push-ui:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for UI
+        id: meta-ui
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.UI_IMAGE_NAME }}
+
+      - name: Build and push UI Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./ui
+          file: ./ui/Dockerfile
+          push: true
+          tags: ${{ steps.meta-ui.outputs.tags }}
+          labels: ${{ steps.meta-ui.outputs.labels }}
