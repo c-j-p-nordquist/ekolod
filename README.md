@@ -8,7 +8,8 @@ Ekolod is a simple, efficient HTTP probe for monitoring web services, with built
 - OpenTelemetry metrics integration
 - Prometheus metrics endpoint
 - YAML-based configuration
-- Easy to deploy and use
+- Docker support for easy deployment
+- Hot reload of configuration
 
 ## Roadmap
 
@@ -21,9 +22,9 @@ The following features are planned for future releases:
 - [ ] Authentication: Basic authentication for metrics and management endpoints
 - [ ] Structured Logging: Improved logging for easier debugging and monitoring
 - [ ] Testing: Comprehensive unit and integration tests
-- [ ] Docker Support: Dockerfile for containerization
+- [x] Docker Support: Dockerfile for containerization
 - [ ] Helm Chart: For deploying the application in Kubernetes environments
-- [ ] Hot Reload: Ability to reload configuration without restarting the application
+- [x] Hot Reload: Ability to reload configuration without restarting the application
 
 ## Quick Start
 
@@ -33,7 +34,7 @@ The following features are planned for future releases:
    cd ekolod
    ```
 
-2. Create a `config.yaml` file in the project root:
+2. Create a `probe/config.yaml` file:
    ```yaml
    targets:
      - name: "Example"
@@ -44,23 +45,23 @@ The following features are planned for future releases:
        url: "https://www.google.com"
        interval: "15s"
        timeout: "5s"
-
    server:
      port: 8080
    ```
 
-3. Run the application:
+3. Build and run the Docker container:
    ```
-   go run cmd/ekolod/main.go
+   docker-compose up --build
    ```
 
-4. Access the metrics:
+4. Access the endpoints:
    - Prometheus metrics: `http://localhost:8080/metrics`
    - Health check: `http://localhost:8080/health`
+   - Reload configuration: `curl -X POST http://localhost:8080/reload`
 
 ## Configuration
 
-Ekolod uses a YAML configuration file (`config.yaml`) to define probe targets and server settings. The configuration file should be placed in the same directory as the executable.
+Ekolod uses a YAML configuration file (`probe/config.yaml`) to define probe targets and server settings.
 
 ### Configuration Options
 
@@ -76,12 +77,17 @@ Ekolod uses a YAML configuration file (`config.yaml`) to define probe targets an
 
 To set up the development environment:
 
-1. Ensure you have Go 1.20 or later installed.
+1. Ensure you have Docker and Docker Compose installed.
 2. Clone the repository.
-3. Run `go mod tidy` to install dependencies.
-4. Make your changes.
-5. Run tests with `go test ./...`.
-6. Build the application with `go build -o ekolod cmd/ekolod/main.go`.
+3. Make your changes.
+4. Build and run the Docker container:
+   ```
+   docker-compose up --build
+   ```
+5. To reload the configuration after changes:
+   ```
+   curl -X POST http://localhost:8080/reload
+   ```
 
 ## Contributing
 

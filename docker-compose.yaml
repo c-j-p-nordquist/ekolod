@@ -1,0 +1,11 @@
+version: '3'
+services:
+  ekolod-probe:
+    build:
+      context: .
+      dockerfile: probe/Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./probe/config.yaml:/root/config.yaml:ro
+    command: ["./probe"]
