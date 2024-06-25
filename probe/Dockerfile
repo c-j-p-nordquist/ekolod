@@ -10,8 +10,9 @@ COPY go.mod go.sum ./
 # Download all dependencies
 RUN go mod download
 
-# Copy the entire project
-COPY . .
+# Copy the source code from cmd and pkg directories
+COPY cmd/ ./cmd/
+COPY pkg/ ./pkg/
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o probe ./cmd/probe

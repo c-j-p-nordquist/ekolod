@@ -8,4 +8,18 @@ services:
       - "8080:8080"
     volumes:
       - ./probe/config.yaml:/root/config.yaml:ro
-    command: ["./probe"]
+
+  ekolod-ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"  # SvelteKit dev server typically runs on 5173
+    volumes:
+      - ./ui:/app
+      - /app/node_modules
+    environment:
+      - EKOLOD_API_URL=http://ekolod-probe:8080
+    depends_on:
+      - ekolod-probe
+    command: npm run dev -- --host
