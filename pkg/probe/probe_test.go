@@ -1,7 +1,6 @@
 package probe
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -58,13 +57,42 @@ func TestProber(t *testing.T) {
 		t.Errorf("Expected 0 targets, got %d", len(prober.targets))
 	}
 
-	// Test RunProbes (this is a basic test, you might want to expand it)
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-
+	// Test RunProbes and Stop
 	prober.AddTarget(target)
-	go prober.RunProbes(ctx)
+	go prober.RunProbes()
 
 	// Wait for at least one probe cycle
 	time.Sleep(1500 * time.Millisecond)
+
+	// Check if we're receiving results
+	select {
+	case result := <-prober.Results():
+		if result.Target != "Test" {
+			t.Errorf("Expected target Test, got %s", result.Target)
+		}
+	case <-time.After(1 * time.Second):
+		t.Error("Timed out waiting for probe result")
+	}
+
+	// Test Stop
+	prober.Stop()
+
+	// Ensure no more results are coming after stop
+	select {
+	case <-prober.Results():
+		t.Error("Received result after stopping prober")
+	case <-time.After(1500 * time.Millisecond):
+		// This is the expected behavior
+	}
+}
+
+func TestProberResults(t *testing.T) {
+	meter := noop.NewMeterProvider().Meter("test")
+	prober := NewProber(meter)
+
+	resultChan := prober.Results()
+
+	if resultChan == nil {
+		t.Error("Results() returned nil channel")
+	}
 }

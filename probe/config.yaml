@@ -7,6 +7,10 @@ targets:
     url: "https://www.google.com"
     interval: "15s"
     timeout: "5s"
+  - name: "Cloudflare"
+    url: "https://cloudflare.com"
+    interval: "15s"
+    timeout: "5s"
 
 server:
   port: 8080

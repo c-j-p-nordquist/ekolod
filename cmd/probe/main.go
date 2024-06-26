@@ -1,9 +1,11 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/c-j-p-nordquist/ekolod/pkg/config"
 	"github.com/c-j-p-nordquist/ekolod/pkg/probe"
@@ -14,9 +16,6 @@ import (
 )
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	log.Println("Starting Ekolod probe application")
 
 	cfg, err := config.Load("config.yaml")
@@ -36,9 +35,10 @@ func main() {
 
 	prober := createProber(cfg, meter)
 	log.Printf("Prober created with %d targets", len(cfg.Targets))
-	go prober.RunProbes(ctx)
 
 	srv := server.NewServer(prober, exporter)
+
+	go prober.RunProbes()
 
 	go func() {
 		for {
@@ -52,25 +52,26 @@ func main() {
 				}
 				log.Println("New configuration loaded successfully")
 
-				// Stop the old prober
-				cancel()
-				log.Println("Stopped old prober")
-				ctx, cancel = context.WithCancel(context.Background())
-
-				// Create and start a new prober with the new configuration
 				newProber := createProber(newCfg, meter)
 				log.Printf("New prober created with %d targets", len(newCfg.Targets))
-				go newProber.RunProbes(ctx)
 
-				// Update the server with the new prober
 				srv.UpdateProber(newProber)
+				go newProber.RunProbes()
 
 				log.Println("Configuration reloaded and applied successfully")
-			case <-ctx.Done():
-				log.Println("Shutting down reload goroutine")
-				return
 			}
 		}
+	}()
+
+	// Set up graceful shutdown
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-sigCh
+		log.Println("Received shutdown signal. Initiating graceful shutdown...")
+		prober.Stop()
+		os.Exit(0)
 	}()
 
 	log.Printf("Starting server on :%d", cfg.Server.Port)

@@ -19,7 +19,7 @@ The following features are planned for future releases:
 - [ ] Dynamic Target Management: API endpoints to add, remove, or modify probe targets at runtime
 - [ ] Advanced Checks: More sophisticated checks beyond HTTP status codes (e.g., response body content matching, header checks)
 - [ ] Alerting: Integration with alerting systems to notify users when probes fail or meet certain conditions
-- [ ] Web UI: Simple web interface to view probe status and metrics
+- [x] Web UI: Simple web interface to view probe status and metrics
 - [ ] Authentication: Basic authentication for metrics and management endpoints
 - [ ] Structured Logging: Improved logging for easier debugging and monitoring
 - [ ] Testing: Comprehensive unit and integration tests
