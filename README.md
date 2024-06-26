@@ -1,10 +1,11 @@
 # Ekolod
 
-Ekolod is a simple, efficient HTTP probe for monitoring web services, with built-in support for OpenTelemetry metrics and Prometheus export.
+Ekolod is a simple, efficient HTTP probe for monitoring web services, with built-in support for OpenTelemetry metrics and Prometheus export. It now includes a SvelteKit-based UI for easy visualization and management.
 
 ## Features
 
 - Configurable HTTP probing of multiple targets
+- SvelteKit-based UI for visualization and management
 - OpenTelemetry metrics integration
 - Prometheus metrics endpoint
 - YAML-based configuration
@@ -26,7 +27,7 @@ The following features are planned for future releases:
 - [ ] Helm Chart: For deploying the application in Kubernetes environments
 - [x] Hot Reload: Ability to reload configuration without restarting the application
 
-## Quick Start
+## Quick Start with Docker
 
 1. Clone the repository:
    ```
@@ -34,7 +35,7 @@ The following features are planned for future releases:
    cd ekolod
    ```
 
-2. Create a `probe/config.yaml` file:
+2. Create a `probe/config.yaml` file with your desired configuration:
    ```yaml
    targets:
      - name: "Example"
@@ -49,29 +50,13 @@ The following features are planned for future releases:
      port: 8080
    ```
 
-3. Build and run the Docker container:
+3. Build and run the Docker containers:
    ```
    docker-compose up --build
    ```
 
-4. Access the endpoints:
-   - Prometheus metrics: `http://localhost:8080/metrics`
-   - Health check: `http://localhost:8080/health`
-   - Reload configuration: `curl -X POST http://localhost:8080/reload`
-
-## Configuration
-
-Ekolod uses a YAML configuration file (`probe/config.yaml`) to define probe targets and server settings.
-
-### Configuration Options
-
-- `targets`: A list of targets to probe
-  - `name`: A unique name for the target
-  - `url`: The URL to probe
-  - `interval`: The interval between probes (e.g., "10s", "1m")
-  - `timeout`: The timeout for each probe (e.g., "5s")
-- `server`:
-  - `port`: The port on which to serve metrics and health check endpoints
+4. Access the UI at `http://localhost:5173`
+5. Access the metrics endpoint at `http://localhost:8080/metrics`
 
 ## Development
 
@@ -79,15 +64,20 @@ To set up the development environment:
 
 1. Ensure you have Docker and Docker Compose installed.
 2. Clone the repository.
-3. Make your changes.
-4. Build and run the Docker container:
-   ```
-   docker-compose up --build
-   ```
-5. To reload the configuration after changes:
-   ```
-   curl -X POST http://localhost:8080/reload
-   ```
+3. Run `docker-compose up --build` to start both the probe and UI in development mode.
+4. The probe API will be available at `http://localhost:8080`
+5. The UI development server will be available at `http://localhost:5173`
+
+## Project Structure
+
+- `cmd/probe/`: Contains the main application for the probe
+- `pkg/`: Contains the core packages for the probe
+- `probe/`: Contains probe-specific files including Dockerfile and config
+- `ui/`: Contains the SvelteKit-based UI application
+
+## Configuration
+
+Ekolod uses a YAML configuration file (`probe/config.yaml`) to define probe targets and server settings.
 
 ## Contributing
 
