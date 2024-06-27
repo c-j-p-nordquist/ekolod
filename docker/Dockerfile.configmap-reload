@@ -1,0 +1,5 @@
+FROM alpine:latest
+
+RUN apk --no-cache add inotify-tools curl
+
+CMD ["sh", "-c", "inotifywait -m -e modify /configs/config.yaml | while read path action file; do curl -X POST http://ekolod-probe:8080/reload; done"]
