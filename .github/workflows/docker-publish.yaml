@@ -3,32 +3,44 @@ name: Build and Push Docker Images
 on:
   push:
     branches: [main]
-    paths:
-      - "cmd/**"
-      - "pkg/**"
-      - "probe/**"
-      - "ui/**"
-      - "go.mod"
-      - "go.sum"
-      - "docker-compose.yml"
   pull_request:
     branches: [main]
-    paths:
-      - "cmd/**"
-      - "pkg/**"
-      - "probe/**"
-      - "ui/**"
-      - "go.mod"
-      - "go.sum"
-      - "docker-compose.yml"
 
 env:
   REGISTRY: ghcr.io
   PROBE_IMAGE_NAME: ${{ github.repository }}/probe
   UI_IMAGE_NAME: ${{ github.repository }}/ui
+  CONFIGMAP_RELOAD_IMAGE_NAME: ${{ github.repository }}/configmap-reload
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      probe: ${{ steps.filter.outputs.probe }}
+      ui: ${{ steps.filter.outputs.ui }}
+      configmap_reload: ${{ steps.filter.outputs.configmap_reload }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            probe:
+              - 'cmd/**'
+              - 'internal/**'
+              - 'pkg/**'
+              - 'go.mod'
+              - 'go.sum'
+              - 'docker/Dockerfile.probe'
+            ui:
+              - 'ui/**'
+              - 'docker/Dockerfile.ui'
+            configmap_reload:
+              - 'docker/Dockerfile.configmap-reload'
+
   build-and-push-probe:
+    needs: changes
+    if: ${{ needs.changes.outputs.probe == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -42,7 +54,7 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract metadata (tags, labels) for Probe
+      - name: Extract metadata for Probe
         id: meta-probe
         uses: docker/metadata-action@v5
         with:
@@ -51,12 +63,14 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./probe/Dockerfile
+          file: ./docker/Dockerfile.probe
           push: true
           tags: ${{ steps.meta-probe.outputs.tags }}
           labels: ${{ steps.meta-probe.outputs.labels }}
 
   build-and-push-ui:
+    needs: changes
+    if: ${{ needs.changes.outputs.ui == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -70,7 +84,7 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract metadata (tags, labels) for UI
+      - name: Extract metadata for UI
         id: meta-ui
         uses: docker/metadata-action@v5
         with:
@@ -79,7 +93,37 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./ui
-          file: ./ui/Dockerfile
+          file: ./docker/Dockerfile.ui
           push: true
           tags: ${{ steps.meta-ui.outputs.tags }}
           labels: ${{ steps.meta-ui.outputs.labels }}
+
+  build-and-push-configmap-reload:
+    needs: changes
+    if: ${{ needs.changes.outputs.configmap_reload == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract metadata for Configmap Reload
+        id: meta-configmap-reload
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.CONFIGMAP_RELOAD_IMAGE_NAME }}
+      - name: Build and push Configmap Reload Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile.configmap-reload
+          push: true
+          tags: ${{ steps.meta-configmap-reload.outputs.tags }}
+          labels: ${{ steps.meta-configmap-reload.outputs.labels }}
