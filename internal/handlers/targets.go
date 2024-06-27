@@ -5,16 +5,17 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/c-j-p-nordquist/ekolod/internal/config"
 	"github.com/c-j-p-nordquist/ekolod/internal/logging"
 	"github.com/c-j-p-nordquist/ekolod/internal/probe"
 )
 
 var (
-	targetList []string
+	targetList []config.Target
 	targetMu   sync.Mutex
 )
 
-func InitTargets(probe *probe.HTTPProbe) {
+func InitTargets(probe probe.Probe) {
 	targetList = probe.GetTargets()
 }
 
@@ -27,11 +28,9 @@ func ListTargetsHandler() http.HandlerFunc {
 	}
 }
 
-func AddTargetHandler(probe *probe.HTTPProbe) http.HandlerFunc {
+func AddTargetHandler(probe probe.Probe) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var target struct {
-			URL string `json:"url"`
-		}
+		var target config.Target
 		err := json.NewDecoder(r.Body).Decode(&target)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -41,18 +40,18 @@ func AddTargetHandler(probe *probe.HTTPProbe) http.HandlerFunc {
 		targetMu.Lock()
 		defer targetMu.Unlock()
 
-		probe.AddTarget(target.URL)
+		probe.AddTarget(&target)
 		targetList = probe.GetTargets() // Update targetList with the new targets
-		logging.Info("Added new target: " + target.URL)
+		logging.Info("Added new target: " + target.Name)
 
 		w.WriteHeader(http.StatusCreated)
 	}
 }
 
-func RemoveTargetHandler(probe *probe.HTTPProbe) http.HandlerFunc {
+func RemoveTargetHandler(probe probe.Probe) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var target struct {
-			URL string `json:"url"`
+			Name string `json:"name"`
 		}
 		err := json.NewDecoder(r.Body).Decode(&target)
 		if err != nil {
@@ -63,10 +62,10 @@ func RemoveTargetHandler(probe *probe.HTTPProbe) http.HandlerFunc {
 		targetMu.Lock()
 		defer targetMu.Unlock()
 
-		probe.RemoveTarget(target.URL)
+		probe.RemoveTarget(target.Name)
 		targetList = probe.GetTargets() // Update targetList with the new targets
 
-		logging.Info("Removed target: " + target.URL)
+		logging.Info("Removed target: " + target.Name)
 		w.WriteHeader(http.StatusOK)
 	}
 }

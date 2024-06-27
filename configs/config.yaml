@@ -1,6 +1,26 @@
-log_level: "info"
+log_level: info
 targets:
-  - "https://google.com"
-  - "https://cloudflare.com"
-  - "https://amazon.com"
-  - "https://svt.se"
+  - name: "Google"
+    url: "https://google.com"
+    frequency: 30s
+    failure_tolerance: 3
+    recovery_threshold: 2
+    checks:
+      - path: "/"
+        http_status:
+          condition: "in"
+          values: [200, 201, 204]
+      - path: "/"
+        response_time:
+          condition: "below"
+          value: 500ms
+  - name: "Github"
+    url: "https://github.com"
+    frequency: 2m
+    failure_tolerance: 2
+    recovery_threshold: 2
+    checks:
+      - path: "/c-j-p-nordquist/ekolod"
+        http_status:
+          condition: "eq"
+          value: 200

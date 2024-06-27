@@ -12,7 +12,7 @@ services:
   ekolod-ui:
     build:
       context: ./ui
-      dockerfile: docker/Dockerfile.ui
+      dockerfile: ../docker/Dockerfile.ui
     ports:
       - "5173:5173"  # SvelteKit dev server typically runs on 5173
     volumes:

@@ -11,7 +11,7 @@ var (
 	HttpRequestDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name: "http_request_duration_seconds",
 		Help: "Duration of HTTP requests.",
-	}, []string{"method", "endpoint"})
+	}, []string{"target", "path", "method"})
 )
 
 func InitMetrics() {

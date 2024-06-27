@@ -25,9 +25,14 @@ func main() {
 	// Initialize metrics
 	metrics.InitMetrics()
 
+	// Convert cfg.Targets to []*config.Target
+	targetPointers := make([]*config.Target, len(cfg.Targets))
+	for i := range cfg.Targets {
+		targetPointers[i] = &cfg.Targets[i]
+	}
+
 	// Start HTTP probe
-	httpProbe := probe.NewHTTPProbe(cfg.Targets)
-	go httpProbe.Start()
+	httpProbe := probe.NewHTTPProbe(targetPointers)
 
 	// Initialize handlers
 	handlers.Init("configs/config.yaml", httpProbe)
