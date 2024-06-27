@@ -1,95 +1,59 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
+	"net/http"
 
-	"github.com/c-j-p-nordquist/ekolod/pkg/config"
-	"github.com/c-j-p-nordquist/ekolod/pkg/probe"
-	"github.com/c-j-p-nordquist/ekolod/pkg/server"
-	"go.opentelemetry.io/otel/exporters/prometheus"
-	"go.opentelemetry.io/otel/metric"
-	sdk "go.opentelemetry.io/otel/sdk/metric"
+	"github.com/c-j-p-nordquist/ekolod/internal/config"
+	"github.com/c-j-p-nordquist/ekolod/internal/handlers"
+	"github.com/c-j-p-nordquist/ekolod/internal/logging"
+	"github.com/c-j-p-nordquist/ekolod/internal/metrics"
+	"github.com/c-j-p-nordquist/ekolod/internal/probe"
 )
 
 func main() {
-	log.Println("Starting Ekolod probe application")
-
-	cfg, err := config.Load("config.yaml")
+	// Load configuration
+	cfg, err := config.LoadConfig("configs/config.yaml")
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		logging.Error(err)
+		log.Fatalf("Error loading config: %v", err)
 	}
-	log.Println("Initial configuration loaded successfully")
 
-	exporter, err := prometheus.New()
-	if err != nil {
-		log.Fatalf("Failed to create Prometheus exporter: %v", err)
-	}
-	log.Println("Prometheus exporter created successfully")
+	// Initialize logging
+	logging.InitLogger(cfg.LogLevel)
 
-	meterProvider := sdk.NewMeterProvider(sdk.WithReader(exporter))
-	meter := meterProvider.Meter("ekolod")
+	// Initialize metrics
+	metrics.InitMetrics()
 
-	prober := createProber(cfg, meter)
-	log.Printf("Prober created with %d targets", len(cfg.Targets))
+	// Start HTTP probe
+	httpProbe := probe.NewHTTPProbe(cfg.Targets)
+	go httpProbe.Start()
 
-	srv := server.NewServer(prober, exporter)
+	// Initialize handlers
+	handlers.Init("configs/config.yaml", httpProbe)
 
-	go prober.RunProbes()
-
-	go func() {
-		for {
-			select {
-			case <-srv.WaitForReload():
-				log.Println("Reload signal received, reloading configuration...")
-				newCfg, err := config.Load("config.yaml")
-				if err != nil {
-					log.Printf("Failed to reload config: %v", err)
-					continue
-				}
-				log.Println("New configuration loaded successfully")
-
-				newProber := createProber(newCfg, meter)
-				log.Printf("New prober created with %d targets", len(newCfg.Targets))
-
-				srv.UpdateProber(newProber)
-				go newProber.RunProbes()
-
-				log.Println("Configuration reloaded and applied successfully")
+	// Setup CORS middleware
+	corsHandler := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			if r.Method == "OPTIONS" {
+				return
 			}
-		}
-	}()
-
-	// Set up graceful shutdown
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		<-sigCh
-		log.Println("Received shutdown signal. Initiating graceful shutdown...")
-		prober.Stop()
-		os.Exit(0)
-	}()
-
-	log.Printf("Starting server on :%d", cfg.Server.Port)
-	if err := srv.Start(fmt.Sprintf(":%d", cfg.Server.Port)); err != nil {
-		log.Fatalf("Server failed to start: %v", err)
-	}
-}
-
-func createProber(cfg *config.Config, meter metric.Meter) *probe.Prober {
-	prober := probe.NewProber(meter)
-	for _, target := range cfg.Targets {
-		prober.AddTarget(probe.Target{
-			Name:     target.Name,
-			URL:      target.URL,
-			Interval: target.Interval,
-			Timeout:  target.Timeout,
+			next.ServeHTTP(w, r)
 		})
-		log.Printf("Added target: %s (%s)", target.Name, target.URL)
 	}
-	return prober
+
+	// Create a new ServeMux
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", metrics.Handler())
+	mux.HandleFunc("/metrics/data", handlers.MetricsHandler(httpProbe))
+	mux.HandleFunc("/reload", handlers.ReloadHandler(httpProbe))
+
+	// Use CORS middleware
+	corsMux := corsHandler(mux)
+
+	logging.Info("Starting HTTP server for metrics and API endpoints...")
+	log.Fatal(http.ListenAndServe(":8080", corsMux))
 }

@@ -3,16 +3,16 @@ services:
   ekolod-probe:
     build:
       context: .
-      dockerfile: probe/Dockerfile
+      dockerfile: docker/Dockerfile.probe
     ports:
       - "8080:8080"
     volumes:
-      - ./probe/config.yaml:/root/config.yaml:ro
+      - ./configs:/app/configs:ro
 
   ekolod-ui:
     build:
       context: ./ui
-      dockerfile: Dockerfile
+      dockerfile: docker/Dockerfile.ui
     ports:
       - "5173:5173"  # SvelteKit dev server typically runs on 5173
     volumes:
@@ -23,3 +23,10 @@ services:
     depends_on:
       - ekolod-probe
     command: npm run dev -- --host
+
+  configmap-reload:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.configmap-reload
+    volumes:
+      - ./configs:/configs:ro

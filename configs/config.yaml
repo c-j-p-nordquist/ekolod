@@ -1,0 +1,6 @@
+log_level: "info"
+targets:
+  - "https://google.com"
+  - "https://cloudflare.com"
+  - "https://amazon.com"
+  - "https://svt.se"

@@ -12,6 +12,7 @@ RUN go mod download
 
 # Copy the source code from cmd and pkg directories
 COPY cmd/ ./cmd/
+COPY internal/ ./internal/
 COPY pkg/ ./pkg/
 
 # Build the application
@@ -22,13 +23,13 @@ FROM alpine:latest
 
 RUN apk --no-cache add ca-certificates
 
-WORKDIR /root/
+WORKDIR /app/
 
 # Copy the pre-built binary file from the previous stage
 COPY --from=builder /app/probe .
 
 # Copy the config file
-COPY probe/config.yaml .
+COPY configs/config.yaml ./configs/config.yaml
 
 # Expose the port the server runs on
 EXPOSE 8080

@@ -1,41 +1,32 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { targets, fetchTargets, fetchMetrics } from '../lib/stores/targets';
 	import { writable } from 'svelte/store';
 
-	const probes = writable([
-		{ name: 'Example', status: 'UP', latency: '50ms' },
-		{ name: 'Google', status: 'UP', latency: '100ms' }
-	]);
+	const metrics = writable<{ [key: string]: number }>({});
 
-	function addProbe() {
-		probes.update((p) => [...p, { name: 'New Probe', status: 'UNKNOWN', latency: '0ms' }]);
-	}
+	onMount(async () => {
+		await fetchTargets();
+		const metricsData = await fetchMetrics();
+		metrics.set(metricsData);
+	});
 </script>
 
-<h1 class="mb-4 text-2xl font-bold">Ekolod Dashboard</h1>
-
-<button class="btn btn-primary mb-4" on:click={addProbe}>Add Probe</button>
-
-<div class="overflow-x-auto">
-	<table class="table w-full">
-		<thead>
-			<tr>
-				<th>Name</th>
-				<th>Status</th>
-				<th>Latency</th>
-			</tr>
-		</thead>
-		<tbody>
-			{#each $probes as probe}
-				<tr>
-					<td>{probe.name}</td>
-					<td
-						><span class="badge {probe.status === 'UP' ? 'badge-success' : 'badge-error'}"
-							>{probe.status}</span
-						></td
-					>
-					<td>{probe.latency}</td>
-				</tr>
-			{/each}
-		</tbody>
-	</table>
-</div>
+<main class="container mx-auto p-4">
+	<h1 class="mb-4 text-4xl font-bold">Dashboard</h1>
+	<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+		{#each $targets as target}
+			<div class="card bg-base-100 shadow-xl">
+				<div class="card-body">
+					<h2 class="card-title">{target}</h2>
+					<p>
+						Status: {#if $metrics[target]}<span class="text-green-500">Up</span>{:else}<span
+								class="text-red-500">Down</span
+							>{/if}
+					</p>
+					<p>Response Time: {$metrics[target] ? $metrics[target].toFixed(2) : 'N/A'} seconds</p>
+				</div>
+			</div>
+		{/each}
+	</div>
+</main>
