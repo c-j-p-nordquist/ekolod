@@ -1,12 +1,11 @@
 # Ekolod
 
-Ekolod is a simple, efficient HTTP probe for monitoring web services, with built-in support for OpenTelemetry metrics and Prometheus export. It now includes a SvelteKit-based UI for easy visualization and management.
+Ekolod is a simple, efficient HTTP probe for monitoring web services, with built-in support for Prometheus metrics export. It now includes a SvelteKit-based UI for easy visualization and management.
 
 ## Features
 
 - Configurable HTTP probing of multiple targets
 - SvelteKit-based UI for visualization and management
-- OpenTelemetry metrics integration
 - Prometheus metrics endpoint
 - YAML-based configuration
 - Docker support for easy deployment
@@ -16,12 +15,11 @@ Ekolod is a simple, efficient HTTP probe for monitoring web services, with built
 
 The following features are planned for future releases:
 
-- [ ] Dynamic Target Management: API endpoints to add, remove, or modify probe targets at runtime
 - [ ] Advanced Checks: More sophisticated checks beyond HTTP status codes (e.g., response body content matching, header checks)
 - [ ] Alerting: Integration with alerting systems to notify users when probes fail or meet certain conditions
 - [x] Web UI: Simple web interface to view probe status and metrics
 - [ ] Authentication: Basic authentication for metrics and management endpoints
-- [ ] Structured Logging: Improved logging for easier debugging and monitoring
+- [x] Structured Logging: Improved logging for easier debugging and monitoring
 - [ ] Testing: Comprehensive unit and integration tests
 - [x] Docker Support: Dockerfile for containerization
 - [ ] Helm Chart: For deploying the application in Kubernetes environments
@@ -35,19 +33,12 @@ The following features are planned for future releases:
    cd ekolod
    ```
 
-2. Create a `probe/config.yaml` file with your desired configuration:
+2. Create a `configs/config.yaml` file with your desired configuration:
    ```yaml
    targets:
-     - name: "Example"
-       url: "https://example.com"
-       interval: "10s"
-       timeout: "5s"
-     - name: "Google"
-       url: "https://www.google.com"
-       interval: "15s"
-       timeout: "5s"
-   server:
-     port: 8080
+     - "https://example.com"
+     - "https://www.google.com"
+   logLevel: info
    ```
 
 3. Build and run the Docker containers:
@@ -71,13 +62,15 @@ To set up the development environment:
 ## Project Structure
 
 - `cmd/probe/`: Contains the main application for the probe
-- `pkg/`: Contains the core packages for the probe
-- `probe/`: Contains probe-specific files including Dockerfile and config
+- `internal/`: Contains the core packages for the probe
+- `pkg/`: Contains utility packages
 - `ui/`: Contains the SvelteKit-based UI application
+- `configs/`: Contains configuration files
+- `docker/`: Contains Dockerfiles for different components
 
 ## Configuration
 
-Ekolod uses a YAML configuration file (`probe/config.yaml`) to define probe targets and server settings.
+Ekolod uses a YAML configuration file (`configs/config.yaml`) to define probe targets and server settings.
 
 ## Contributing
 
