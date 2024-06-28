@@ -10,10 +10,16 @@ type Probe interface {
 	GetMetrics() map[string]map[string]*ProbeResult
 	AddTarget(target *config.Target)
 	RemoveTarget(name string)
+	RunProbe()
+	UpdateTargetChecks(name string, checks []config.Check)
 }
 
 type ProbeResult struct {
-	Duration float64
-	Success  bool
-	Message  string
+	Duration       float64
+	Success        bool
+	Message        string
+	StatusCode     int
+	ContentLength  int64
+	TLSVersion     string
+	CertExpiryDays int
 }

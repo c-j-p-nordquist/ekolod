@@ -42,6 +42,12 @@ func AddTargetHandler(probe probe.Probe) http.HandlerFunc {
 
 		probe.AddTarget(&target)
 		targetList = probe.GetTargets() // Update targetList with the new targets
+
+		// Update the global cfg variable
+		mu.Lock()
+		cfg.Targets = append(cfg.Targets, target)
+		mu.Unlock()
+
 		logging.Info("Added new target: " + target.Name)
 
 		w.WriteHeader(http.StatusCreated)
@@ -64,6 +70,16 @@ func RemoveTargetHandler(probe probe.Probe) http.HandlerFunc {
 
 		probe.RemoveTarget(target.Name)
 		targetList = probe.GetTargets() // Update targetList with the new targets
+
+		// Update the global cfg variable
+		mu.Lock()
+		for i, t := range cfg.Targets {
+			if t.Name == target.Name {
+				cfg.Targets = append(cfg.Targets[:i], cfg.Targets[i+1:]...)
+				break
+			}
+		}
+		mu.Unlock()
 
 		logging.Info("Removed target: " + target.Name)
 		w.WriteHeader(http.StatusOK)

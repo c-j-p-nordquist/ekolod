@@ -24,3 +24,23 @@ targets:
         http_status:
           condition: "eq"
           value: 200
+  - name: "httpbin.org"
+    url: "http://eu.httpbin.org"
+    frequency: 30s
+    failure_tolerance: 2
+    recovery_threshold: 2
+    checks:
+      - path: "/"
+        http_status:
+          condition: "eq"
+          value: 200
+  - name: "ChatGPT"
+    url: "https://chat.openai.com"
+    frequency: 30s
+    failure_tolerance: 2
+    recovery_threshold: 2
+    checks:
+      - path: "/"
+        http_status:
+          condition: "eq"
+          value: 403

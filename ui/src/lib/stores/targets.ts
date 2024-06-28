@@ -5,6 +5,10 @@ export interface MetricData {
     Duration: number;
     Success: boolean;
     Message: string;
+    StatusCode: number;
+    ContentLength: number;
+    TLSVersion: string;
+    CertExpiryDays: number;
 }
 
 export interface Metrics {

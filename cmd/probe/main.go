@@ -34,6 +34,9 @@ func main() {
 	// Start HTTP probe
 	httpProbe := probe.NewHTTPProbe(targetPointers)
 
+	// Run initial probe immediately
+	httpProbe.RunProbe()
+
 	// Initialize handlers
 	handlers.Init("configs/config.yaml", httpProbe)
 
@@ -55,6 +58,12 @@ func main() {
 	mux.Handle("/metrics", metrics.Handler())
 	mux.HandleFunc("/metrics/data", handlers.MetricsHandler(httpProbe))
 	mux.HandleFunc("/reload", handlers.ReloadHandler(httpProbe))
+
+	// Add health check endpoint
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
 
 	// Use CORS middleware
 	corsMux := corsHandler(mux)

@@ -5,18 +5,50 @@
 		metrics,
 		fetchTargets,
 		fetchMetrics,
-		type Metrics
+		type Metrics,
+		type MetricData
 	} from '../lib/stores/targets';
 	import { writable } from 'svelte/store';
-	import { Clock, Grid, List, BarChart } from 'lucide-svelte';
+	import { Clock, Grid, List, BarChart, Lock, FileText, RefreshCw } from 'lucide-svelte';
 
 	let loading = true;
+	let error = '';
 	let viewMode = writable('grid');
 
-	onMount(async () => {
-		await fetchTargets();
-		await fetchMetrics();
+	async function checkHealth() {
+		try {
+			const response = await fetch('http://localhost:8080/health');
+			return response.ok;
+		} catch {
+			return false;
+		}
+	}
+
+	async function fetchDataWithRetry(retries = 5, interval = 5000) {
+		for (let i = 0; i < retries; i++) {
+			if (await checkHealth()) {
+				try {
+					await fetchTargets();
+					await fetchMetrics();
+					loading = false;
+					error = '';
+					return;
+				} catch (e) {
+					console.error('Error fetching data:', e);
+				}
+			}
+			await new Promise((resolve) => setTimeout(resolve, interval));
+		}
 		loading = false;
+		error = 'Failed to fetch data after multiple attempts. Please try refreshing the page.';
+	}
+
+	function handleRefreshClick() {
+		fetchDataWithRetry();
+	}
+
+	onMount(() => {
+		fetchDataWithRetry();
 	});
 
 	function getStatusColor(success: boolean | undefined): string {
@@ -27,6 +59,13 @@
 	function formatResponseTime(duration: number | undefined): string {
 		if (duration === undefined || typeof duration !== 'number' || isNaN(duration)) return 'N/A';
 		return duration.toFixed(3);
+	}
+
+	function formatContentLength(length: number | undefined): string {
+		if (length === undefined || typeof length !== 'number' || isNaN(length)) return 'N/A';
+		if (length < 1024) return `${length} B`;
+		if (length < 1048576) return `${(length / 1024).toFixed(2)} KB`;
+		return `${(length / 1048576).toFixed(2)} MB`;
 	}
 
 	$: getIconColor = (mode: string) => ($viewMode === mode ? 'text-blue-600' : 'text-gray-600');
@@ -42,43 +81,54 @@
 		return (value / maxValue) * 300; // 300 is the maximum bar height
 	}
 
-	function getServiceStatus(endpoints: { [key: string]: { Success: boolean } }): boolean {
+	function getServiceStatus(endpoints: { [key: string]: MetricData }): boolean {
 		return Object.values(endpoints).every((endpoint) => endpoint.Success);
 	}
 
-	function getServiceDuration(endpoints: { [key: string]: { Duration: number } }): number {
+	function getServiceDuration(endpoints: { [key: string]: MetricData }): number {
 		return Object.values(endpoints)[0]?.Duration ?? 0;
 	}
 
-	// Debug function
-	function logMetrics() {
-		console.log('Current metrics:', $metrics);
-		console.log('Chart data:', chartData);
+	function getCertExpiryColor(days: number): string {
+		if (days <= 7) return 'text-red-600';
+		if (days <= 30) return 'text-yellow-600';
+		return 'text-green-600';
 	}
 </script>
 
+<svelte:head>
+	<title>Ekolod Dashboard</title>
+</svelte:head>
+
 <main class="container mx-auto p-4">
 	<div class="mb-6 flex items-center justify-between">
-		<h1 class="text-3xl font-bold text-gray-800">Dashboard</h1>
+		<h1 class="text-3xl font-bold text-gray-800">Ekolod Dashboard</h1>
 		<div class="flex space-x-2">
 			<button
 				class="rounded-md p-2 transition-colors duration-200 hover:bg-gray-200"
+				on:click={handleRefreshClick}
+				title="Refresh data"
+			>
+				<RefreshCw class="h-5 w-5 text-gray-600" />
+			</button>
+			<button
+				class="rounded-md p-2 transition-colors duration-200 hover:bg-gray-200"
 				on:click={() => ($viewMode = 'grid')}
+				title="Grid view"
 			>
 				<Grid class="h-5 w-5 {getIconColor('grid')}" />
 			</button>
 			<button
 				class="rounded-md p-2 transition-colors duration-200 hover:bg-gray-200"
 				on:click={() => ($viewMode = 'list')}
+				title="List view"
 			>
 				<List class="h-5 w-5 {getIconColor('list')}" />
 			</button>
 			<button
 				class="rounded-md p-2 transition-colors duration-200 hover:bg-gray-200"
-				on:click={() => {
-					$viewMode = 'chart';
-					logMetrics();
-				}}
+				on:click={() => ($viewMode = 'chart')}
+				title="Chart view"
 			>
 				<BarChart class="h-5 w-5 {getIconColor('chart')}" />
 			</button>
@@ -88,6 +138,14 @@
 	{#if loading}
 		<div class="flex h-64 items-center justify-center">
 			<div class="h-16 w-16 animate-spin rounded-full border-b-2 border-t-2 border-blue-600"></div>
+		</div>
+	{:else if error}
+		<div
+			class="relative rounded border border-red-400 bg-red-100 px-4 py-3 text-red-700"
+			role="alert"
+		>
+			<strong class="font-bold">Error: </strong>
+			<span class="block sm:inline">{error}</span>
 		</div>
 	{:else if $viewMode === 'grid'}
 		<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -108,17 +166,39 @@
 							{/if}
 						</p>
 					</div>
-					<div class="flex items-center">
+					<div class="mb-2 flex items-center">
 						<Clock class="mr-2 h-4 w-4 text-gray-600" />
 						<p class="text-sm">
 							Response Time: {formatResponseTime(getServiceDuration(endpoints))} seconds
+						</p>
+					</div>
+					<div class="mb-2 flex items-center">
+						<FileText class="mr-2 h-4 w-4 text-gray-600" />
+						<p class="text-sm">
+							Content Length: {formatContentLength(Object.values(endpoints)[0]?.ContentLength)}
+						</p>
+					</div>
+					<div class="mb-2 flex items-center">
+						<Lock class="mr-2 h-4 w-4 text-gray-600" />
+						<p class="text-sm">
+							TLS Version: {Object.values(endpoints)[0]?.TLSVersion || 'N/A'}
+						</p>
+					</div>
+					<div class="flex items-center">
+						<Lock class="mr-2 h-4 w-4 text-gray-600" />
+						<p class="text-sm">
+							Cert Expiry: <span
+								class={getCertExpiryColor(Object.values(endpoints)[0]?.CertExpiryDays || 0)}
+							>
+								{Object.values(endpoints)[0]?.CertExpiryDays || 'N/A'} days
+							</span>
 						</p>
 					</div>
 				</div>
 			{/each}
 		</div>
 	{:else if $viewMode === 'list'}
-		<div class="overflow-hidden rounded-lg bg-white shadow-md">
+		<div class="overflow-x-auto">
 			<table class="min-w-full divide-y divide-gray-200">
 				<thead class="bg-gray-50">
 					<tr>
@@ -133,6 +213,18 @@
 						<th
 							class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
 							>Response Time</th
+						>
+						<th
+							class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+							>Content Length</th
+						>
+						<th
+							class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+							>TLS Version</th
+						>
+						<th
+							class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+							>Cert Expiry</th
 						>
 					</tr>
 				</thead>
@@ -157,6 +249,17 @@
 							<td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500"
 								>{formatResponseTime(getServiceDuration(endpoints))} seconds</td
 							>
+							<td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500"
+								>{formatContentLength(Object.values(endpoints)[0]?.ContentLength)}</td
+							>
+							<td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500"
+								>{Object.values(endpoints)[0]?.TLSVersion || 'N/A'}</td
+							>
+							<td class="whitespace-nowrap px-6 py-4 text-sm">
+								<span class={getCertExpiryColor(Object.values(endpoints)[0]?.CertExpiryDays || 0)}>
+									{Object.values(endpoints)[0]?.CertExpiryDays || 'N/A'} days
+								</span>
+							</td>
 						</tr>
 					{/each}
 				</tbody>

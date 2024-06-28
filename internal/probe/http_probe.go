@@ -1,6 +1,7 @@
 package probe
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
@@ -138,6 +139,50 @@ func (p *HTTPProbe) GetMetrics() map[string]map[string]*ProbeResult {
 	return copy
 }
 
+func (p *HTTPProbe) RunProbe() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	for _, target := range p.targets {
+		for _, check := range target.Checks {
+			result := p.runCheck(target, convertConfigCheckToCheckerCheck(check))
+
+			if p.metrics[target.Name] == nil {
+				p.metrics[target.Name] = make(map[string]*ProbeResult)
+			}
+			p.metrics[target.Name][check.Path] = result
+
+			metrics.HttpRequestDuration.With(prometheus.Labels{
+				"target": target.Name,
+				"path":   check.Path,
+				"method": "GET",
+			}).Observe(result.Duration)
+
+			metrics.HttpResponseSize.With(prometheus.Labels{
+				"target": target.Name,
+				"path":   check.Path,
+			}).Set(float64(result.ContentLength))
+
+			if result.TLSVersion != "" {
+				metrics.TLSVersion.With(prometheus.Labels{
+					"target":  target.Name,
+					"version": result.TLSVersion,
+				}).Set(1)
+			}
+
+			if result.CertExpiryDays != 0 {
+				metrics.CertExpiryDays.With(prometheus.Labels{
+					"target": target.Name,
+				}).Set(float64(result.CertExpiryDays))
+			}
+
+			if !result.Success {
+				logging.Warn(fmt.Sprintf("Check failed for target '%s', path '%s': %s", target.Name, check.Path, result.Message))
+			}
+		}
+	}
+}
+
 func (p *HTTPProbe) probeTarget(target *config.Target, stopChan chan struct{}) {
 	ticker := time.NewTicker(target.Frequency)
 	defer ticker.Stop()
@@ -174,24 +219,41 @@ func (p *HTTPProbe) probeTarget(target *config.Target, stopChan chan struct{}) {
 func (p *HTTPProbe) runCheck(target *config.Target, check checker.Check) *ProbeResult {
 	url := target.URL + check.Path
 	start := time.Now()
-	resp, err := http.Get(url)
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
+	resp, err := client.Get(url)
 	duration := time.Since(start)
 
+	result := &ProbeResult{
+		Duration: duration.Seconds(),
+		Success:  false,
+	}
+
 	if err != nil {
-		return &ProbeResult{
-			Duration: duration.Seconds(),
-			Success:  false,
-			Message:  fmt.Sprintf("HTTP request failed: %v", err),
-		}
+		result.Message = fmt.Sprintf("HTTP request failed: %v", err)
+		return result
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return &ProbeResult{
-			Duration: duration.Seconds(),
-			Success:  false,
-			Message:  fmt.Sprintf("Failed to read response body: %v", err),
+		result.Message = fmt.Sprintf("Failed to read response body: %v", err)
+		return result
+	}
+
+	result.StatusCode = resp.StatusCode
+	result.ContentLength = resp.ContentLength
+
+	if resp.TLS != nil {
+		result.TLSVersion = tlsVersionToString(resp.TLS.Version)
+		if len(resp.TLS.PeerCertificates) > 0 {
+			result.CertExpiryDays = int(time.Until(resp.TLS.PeerCertificates[0].NotAfter).Hours() / 24)
 		}
 	}
 
@@ -201,12 +263,25 @@ func (p *HTTPProbe) runCheck(target *config.Target, check checker.Check) *ProbeR
 		Duration:   duration,
 	}
 
-	result := checker.EvaluateCheck(check, checkerResponse)
+	checkResult := checker.EvaluateCheck(check, checkerResponse)
+	result.Success = checkResult.Success
+	result.Message = checkResult.Message
 
-	return &ProbeResult{
-		Duration: duration.Seconds(),
-		Success:  result.Success,
-		Message:  result.Message,
+	return result
+}
+
+func tlsVersionToString(version uint16) string {
+	switch version {
+	case tls.VersionTLS10:
+		return "TLS 1.0"
+	case tls.VersionTLS11:
+		return "TLS 1.1"
+	case tls.VersionTLS12:
+		return "TLS 1.2"
+	case tls.VersionTLS13:
+		return "TLS 1.3"
+	default:
+		return "Unknown"
 	}
 }
 
@@ -227,5 +302,26 @@ func convertCondition(configCondition *config.Condition) *checker.Condition {
 		Type:   configCondition.Type,
 		Value:  configCondition.Value,
 		Values: configCondition.Values,
+	}
+}
+
+func (p *HTTPProbe) UpdateTargetChecks(name string, checks []config.Check) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	for i, target := range p.targets {
+		if target.Name == name {
+			p.targets[i].Checks = checks
+			// Stop the existing goroutine for this target
+			if stopChan, exists := p.stopChannels[name]; exists {
+				close(stopChan)
+				delete(p.stopChannels, name)
+			}
+			// Start a new goroutine with updated checks
+			stopChan := make(chan struct{})
+			p.stopChannels[name] = stopChan
+			go p.probeTarget(p.targets[i], stopChan)
+			break
+		}
 	}
 }

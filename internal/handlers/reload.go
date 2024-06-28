@@ -21,11 +21,50 @@ func Init(cfgPath string, probe probe.Probe) {
 		logging.Error(err)
 		return
 	}
-	targetPointers := make([]*config.Target, len(cfg.Targets))
+	updateProbeAndTargetList(probe)
+}
+
+func updateProbeAndTargetList(probe probe.Probe) {
+	newTargets := make([]*config.Target, len(cfg.Targets))
 	for i := range cfg.Targets {
-		targetPointers[i] = &cfg.Targets[i]
+		newTargets[i] = &cfg.Targets[i]
 	}
-	probe.UpdateTargets(targetPointers)
+
+	oldTargets := probe.GetTargets()
+
+	// Update existing targets and add new ones
+	for _, newTarget := range newTargets {
+		found := false
+		for _, oldTarget := range oldTargets {
+			if oldTarget.Name == newTarget.Name {
+				probe.UpdateTargetChecks(newTarget.Name, newTarget.Checks)
+				found = true
+				break
+			}
+		}
+		if !found {
+			probe.AddTarget(newTarget)
+		}
+	}
+
+	// Remove targets that no longer exist
+	for _, oldTarget := range oldTargets {
+		found := false
+		for _, newTarget := range newTargets {
+			if oldTarget.Name == newTarget.Name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			probe.RemoveTarget(oldTarget.Name)
+		}
+	}
+
+	// Update targetList
+	targetMu.Lock()
+	targetList = probe.GetTargets()
+	targetMu.Unlock()
 }
 
 func ReloadHandler(probe probe.Probe) http.HandlerFunc {
@@ -46,11 +85,7 @@ func ReloadHandler(probe probe.Probe) http.HandlerFunc {
 			return
 		}
 
-		targetPointers := make([]*config.Target, len(cfg.Targets))
-		for i := range cfg.Targets {
-			targetPointers[i] = &cfg.Targets[i]
-		}
-		probe.UpdateTargets(targetPointers)
+		updateProbeAndTargetList(probe)
 
 		logging.Info("Configuration reloaded successfully")
 		w.Write([]byte("Configuration reloaded successfully"))
