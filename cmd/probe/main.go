@@ -4,11 +4,11 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/c-j-p-nordquist/ekolod/internal/config"
 	"github.com/c-j-p-nordquist/ekolod/internal/handlers"
-	"github.com/c-j-p-nordquist/ekolod/internal/logging"
-	"github.com/c-j-p-nordquist/ekolod/internal/metrics"
 	"github.com/c-j-p-nordquist/ekolod/internal/probe"
+	"github.com/c-j-p-nordquist/ekolod/pkg/config"
+	"github.com/c-j-p-nordquist/ekolod/pkg/logging"
+	"github.com/c-j-p-nordquist/ekolod/pkg/metrics"
 )
 
 func main() {

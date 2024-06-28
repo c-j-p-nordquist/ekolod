@@ -12,6 +12,7 @@ RUN go mod download
 
 # Copy the source code from cmd and pkg directories
 COPY cmd/ ./cmd/
+COPY pkg/ ./pkg/
 COPY internal/ ./internal/
 
 # Build the application

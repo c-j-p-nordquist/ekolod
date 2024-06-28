@@ -1,6 +1,6 @@
 package probe
 
-import "github.com/c-j-p-nordquist/ekolod/internal/config"
+import "github.com/c-j-p-nordquist/ekolod/pkg/config"
 
 type Probe interface {
 	Start()

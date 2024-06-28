@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/c-j-p-nordquist/ekolod/internal/checker"
-	"github.com/c-j-p-nordquist/ekolod/internal/config"
-	"github.com/c-j-p-nordquist/ekolod/internal/logging"
-	"github.com/c-j-p-nordquist/ekolod/internal/metrics"
+	"github.com/c-j-p-nordquist/ekolod/pkg/checker"
+	"github.com/c-j-p-nordquist/ekolod/pkg/config"
+	"github.com/c-j-p-nordquist/ekolod/pkg/logging"
+	"github.com/c-j-p-nordquist/ekolod/pkg/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

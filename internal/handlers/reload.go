@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/c-j-p-nordquist/ekolod/internal/config"
-	"github.com/c-j-p-nordquist/ekolod/internal/logging"
 	"github.com/c-j-p-nordquist/ekolod/internal/probe"
+	"github.com/c-j-p-nordquist/ekolod/pkg/config"
+	"github.com/c-j-p-nordquist/ekolod/pkg/logging"
 )
 
 var (
