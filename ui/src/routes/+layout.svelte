@@ -1,37 +1,111 @@
 <script lang="ts">
 	import '../app.css';
+	import { page } from '$app/stores';
+	import {
+		Menu,
+		X,
+		Home,
+		Activity,
+		Settings,
+		HelpCircle,
+		ChevronLeft,
+		ChevronRight
+	} from 'lucide-svelte';
+	import { writable } from 'svelte/store';
+
+	const isNavbarCollapsed = writable(false);
+
+	function toggleNavbar() {
+		isNavbarCollapsed.update((n) => !n);
+	}
 </script>
 
-<div class="flex min-h-screen flex-col bg-gray-100">
-	<nav class="bg-white shadow-sm">
-		<div class="container mx-auto px-4">
-			<div class="flex h-16 items-center justify-between">
-				<a
-					href="/"
-					class="text-2xl font-extrabold tracking-wider text-gray-800 transition-colors duration-200 hover:text-blue-600"
-					>EKOLOD</a
-				>
-				<div class="hidden md:block">
-					<div class="ml-10 flex items-baseline space-x-4">
-						<a
-							href="/"
-							class="rounded-md px-3 py-2 text-sm font-medium text-gray-800 transition-colors duration-200 hover:text-blue-600"
-							>Dashboard</a
-						>
-						<!-- Add more navigation items here as needed -->
-					</div>
-				</div>
+<div class="bg-base-200 flex h-screen">
+	<!-- Sidebar -->
+	<aside
+		class="bg-base-100 text-base-content transition-all duration-300 ease-in-out {$isNavbarCollapsed
+			? 'w-16'
+			: 'w-64'} flex flex-col"
+	>
+		<div class="flex items-center justify-between p-4">
+			{#if !$isNavbarCollapsed}
+				<span class="text-xl font-bold">EKOLOD</span>
+			{/if}
+			<button on:click={toggleNavbar} class="btn btn-square btn-ghost">
+				{#if $isNavbarCollapsed}
+					<ChevronRight />
+				{:else}
+					<ChevronLeft />
+				{/if}
+			</button>
+		</div>
+		<nav class="flex-1 overflow-y-auto">
+			<ul class="menu p-2">
+				<li>
+					<a href="/" class="flex items-center gap-2 {$page.url.pathname === '/' ? 'active' : ''}">
+						<Home />
+						{#if !$isNavbarCollapsed}
+							<span>Dashboard</span>
+						{/if}
+					</a>
+				</li>
+				<li>
+					<a
+						href="/services"
+						class="flex items-center gap-2 {$page.url.pathname === '/services' ? 'active' : ''}"
+					>
+						<Activity />
+						{#if !$isNavbarCollapsed}
+							<span>Services</span>
+						{/if}
+					</a>
+				</li>
+				<li>
+					<a
+						href="/settings"
+						class="flex items-center gap-2 {$page.url.pathname === '/settings' ? 'active' : ''}"
+					>
+						<Settings />
+						{#if !$isNavbarCollapsed}
+							<span>Settings</span>
+						{/if}
+					</a>
+				</li>
+				<li>
+					<a
+						href="/help"
+						class="flex items-center gap-2 {$page.url.pathname === '/help' ? 'active' : ''}"
+					>
+						<HelpCircle />
+						{#if !$isNavbarCollapsed}
+							<span>Help</span>
+						{/if}
+					</a>
+				</li>
+			</ul>
+		</nav>
+	</aside>
+
+	<!-- Main content -->
+	<div class="flex flex-1 flex-col overflow-hidden">
+		<!-- Top navbar for mobile -->
+		<nav class="bg-base-100 p-4 shadow-md lg:hidden">
+			<div class="flex items-center justify-between">
+				<span class="text-xl font-bold">EKOLOD</span>
+				<button on:click={toggleNavbar} class="btn btn-square btn-ghost">
+					<Menu />
+				</button>
 			</div>
-		</div>
-	</nav>
+		</nav>
 
-	<main class="container mx-auto flex-grow px-4 py-8">
-		<slot />
-	</main>
+		<!-- Page content -->
+		<main class="bg-base-200 flex-1 overflow-y-auto p-4">
+			<slot />
+		</main>
 
-	<footer class="mt-auto bg-white shadow-sm">
-		<div class="container mx-auto px-4 py-4 text-center text-gray-600">
-			© {new Date().getFullYear()} Ekolod. All rights reserved.
-		</div>
-	</footer>
+		<!-- Footer -->
+		<footer class="bg-base-300 text-base-content p-4 text-center">
+			<p>© {new Date().getFullYear()} Ekolod. All rights reserved.</p>
+		</footer>
+	</div>
 </div>
