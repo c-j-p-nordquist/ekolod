@@ -21,7 +21,7 @@ export const targets = writable<string[]>([]);
 export const metrics = writable<Metrics>({});
 
 export async function fetchTargets() {
-    const response = await fetch(`${API_URL}/metrics/data`);
+    const response = await fetch(`${API_URL}/probe-metrics`);
     const data: Metrics = await response.json();
     const serviceNames = Object.keys(data);
     targets.set(serviceNames);
@@ -29,7 +29,7 @@ export async function fetchTargets() {
 }
 
 export async function fetchMetrics() {
-    const response = await fetch(`${API_URL}/metrics/data`);
+    const response = await fetch(`${API_URL}/probe-metrics`);
     const data: Metrics = await response.json();
     metrics.set(data);
     return data;

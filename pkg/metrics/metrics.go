@@ -3,6 +3,8 @@ package metrics
 import (
 	"net/http"
 
+	"github.com/c-j-p-nordquist/ekolod/pkg/config"
+	"github.com/c-j-p-nordquist/ekolod/pkg/proberesult"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -34,6 +36,32 @@ func InitMetrics() {
 	prometheus.MustRegister(HttpResponseSize)
 	prometheus.MustRegister(TLSVersion)
 	prometheus.MustRegister(CertExpiryDays)
+}
+
+func UpdatePrometheusMetrics(target *config.Target, check config.Check, result *proberesult.ProbeResult) {
+	HttpRequestDuration.With(prometheus.Labels{
+		"target": target.Name,
+		"path":   check.Path,
+		"method": "GET",
+	}).Observe(result.Duration)
+
+	HttpResponseSize.With(prometheus.Labels{
+		"target": target.Name,
+		"path":   check.Path,
+	}).Set(float64(result.ContentLength))
+
+	if result.TLSVersion != "" {
+		TLSVersion.With(prometheus.Labels{
+			"target":  target.Name,
+			"version": result.TLSVersion,
+		}).Set(1)
+	}
+
+	if result.CertExpiryDays != 0 {
+		CertExpiryDays.With(prometheus.Labels{
+			"target": target.Name,
+		}).Set(float64(result.CertExpiryDays))
+	}
 }
 
 func Handler() http.Handler {

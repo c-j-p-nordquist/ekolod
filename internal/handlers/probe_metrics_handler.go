@@ -7,7 +7,7 @@ import (
 	"github.com/c-j-p-nordquist/ekolod/internal/probe"
 )
 
-func MetricsHandler(probe probe.Probe) http.HandlerFunc {
+func ProbeMetricsHandler(probe probe.Probe) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		metrics := probe.GetMetrics()

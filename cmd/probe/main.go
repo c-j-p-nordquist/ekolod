@@ -3,12 +3,15 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/c-j-p-nordquist/ekolod/internal/handlers"
 	"github.com/c-j-p-nordquist/ekolod/internal/probe"
 	"github.com/c-j-p-nordquist/ekolod/pkg/config"
+	"github.com/c-j-p-nordquist/ekolod/pkg/health"
 	"github.com/c-j-p-nordquist/ekolod/pkg/logging"
 	"github.com/c-j-p-nordquist/ekolod/pkg/metrics"
+	"github.com/c-j-p-nordquist/ekolod/pkg/metricspusher"
 )
 
 func main() {
@@ -30,9 +33,23 @@ func main() {
 	for i := range cfg.Targets {
 		targetPointers[i] = &cfg.Targets[i]
 	}
+	// Initialize health checker
+	healthChecker := health.New()
+	lastRunChecker := &probe.LastRunChecker{}
+	healthChecker.AddChecker(lastRunChecker)
+	healthChecker.AddChecker(&probe.CollectorReachableChecker{})
+
+	collectorURL := os.Getenv("COLLECTOR_URL")
+	if collectorURL == "" {
+		log.Fatal("COLLECTOR_URL environment variable is not set")
+	}
+
+	if err := metricspusher.Init(collectorURL); err != nil {
+		log.Fatalf("Failed to initialize metric pusher: %v", err)
+	}
 
 	// Start HTTP probe
-	httpProbe := probe.NewHTTPProbe(targetPointers)
+	httpProbe := probe.NewHTTPProbe(targetPointers, lastRunChecker)
 
 	// Run initial probe immediately
 	httpProbe.RunProbe()
@@ -56,18 +73,18 @@ func main() {
 	// Create a new ServeMux
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", metrics.Handler())
-	mux.HandleFunc("/metrics/data", handlers.MetricsHandler(httpProbe))
+	mux.HandleFunc("/probe-metrics", handlers.ProbeMetricsHandler(httpProbe)) // JSON metrics
 	mux.HandleFunc("/reload", handlers.ReloadHandler(httpProbe))
-
-	// Add health check endpoint
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	})
+	mux.HandleFunc("/health", healthChecker.Handler())
 
 	// Use CORS middleware
 	corsMux := corsHandler(mux)
 
-	logging.Info("Starting HTTP server for metrics and API endpoints...")
-	log.Fatal(http.ListenAndServe(":8080", corsMux))
+	// Start the server
+	probePort := os.Getenv("PROBE_PORT")
+	if probePort == "" {
+		probePort = "8080"
+	}
+	logging.Info("Starting Probe HTTP server on :" + probePort)
+	log.Fatal(http.ListenAndServe(":"+probePort, corsMux))
 }
