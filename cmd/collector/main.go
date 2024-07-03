@@ -67,6 +67,7 @@ func main() {
 	// Set up HTTP routes
 	http.HandleFunc("/health", healthChecker.Handler())
 	http.HandleFunc("/metrics", collector.MetricsHandler(db))
+	http.HandleFunc("/timeseries", collector.TimeSeriesHandler(db))
 
 	// Start the server
 	log.Printf("Starting Collector server on :%s", collectorPort)
