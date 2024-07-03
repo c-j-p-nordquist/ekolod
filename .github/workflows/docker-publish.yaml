@@ -11,6 +11,7 @@ env:
   PROBE_IMAGE_NAME: ${{ github.repository }}/probe
   UI_IMAGE_NAME: ${{ github.repository }}/ui
   CONFIGMAP_RELOAD_IMAGE_NAME: ${{ github.repository }}/configmap-reload
+  COLLECTOR_IMAGE_NAME: ${{ github.repository }}/collector
 
 jobs:
   changes:
@@ -26,16 +27,22 @@ jobs:
         with:
           filters: |
             probe:
-              - 'cmd/**'
+              - 'cmd/probe/**'
               - 'internal/**'
               - 'go.mod'
               - 'go.sum'
+              - 'pkg/**'
               - 'docker/Dockerfile.probe'
             ui:
               - 'ui/**'
               - 'docker/Dockerfile.ui'
             configmap_reload:
               - 'docker/Dockerfile.configmap-reload'
+            collector:
+              - 'cmd/collector/**'
+              - 'internal/**'
+              - 'pkg/**'
+              - 'docker/Dockerfile.collector'
 
   build-and-push-probe:
     needs: changes
@@ -126,3 +133,33 @@ jobs:
           push: true
           tags: ${{ steps.meta-configmap-reload.outputs.tags }}
           labels: ${{ steps.meta-configmap-reload.outputs.labels }}
+
+  build-and-push-collector:
+    needs: changes
+    if: ${{ needs.changes.outputs.collector == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract metadata for collector
+        id: meta-collector
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.COLLECTOR_IMAGE_NAME }}
+      - name: Build and push collector Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile.collector
+          push: true
+          tags: ${{ steps.meta-collector.outputs.tags }}
+          labels: ${{ steps.meta-collector.outputs.labels }}
