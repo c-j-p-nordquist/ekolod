@@ -1,204 +1,136 @@
-<script lang="ts">
-	import { onMount } from 'svelte';
-	import { fly } from 'svelte/transition';
-	import {
-		targets,
-		metrics,
-		fetchTargets,
-		fetchMetrics,
-		type Metrics,
-		type MetricData
-	} from '$lib/stores/targets';
-	import { writable } from 'svelte/store';
-	import { Grid, List, BarChart, RefreshCw, AlertCircle } from 'lucide-svelte';
-	import ServiceGridItem from '$lib/components/ServiceGridItem.svelte';
-	import ServiceTable from '$lib/components/ServiceTable.svelte';
+<script>
+	import IconServices from '~icons/mdi/application';
+	import IconAlerts from '~icons/mdi/alert';
+	import IconCheck from '~icons/mdi/check-circle';
 
-	let loading = true;
-	let error = '';
-	let viewMode = writable('grid');
-	let refreshing = false;
-	let notification: { message: string; type: 'success' | 'error' } | null = null;
+	let overallHealth = $state(98);
+	let totalServices = $state(25);
+	let activeAlerts = $state(3);
+	let uptime = $state(99.99);
 
-	function generateMockTimeSeriesData(count: number) {
-		return Array.from({ length: count }, () => Math.random() * 100);
-	}
-
-	$: timeSeriesData = Object.fromEntries(
-		Object.keys($metrics).map((service) => [service, generateMockTimeSeriesData(10)])
-	);
-
-	async function checkHealth() {
-		try {
-			const response = await fetch('http://localhost:8080/health');
-			return response.ok;
-		} catch {
-			return false;
+	let recentAlerts = $state([
+		{
+			service: 'Web API',
+			message: 'High latency detected',
+			severity: 'warning',
+			time: '5 minutes ago'
+		},
+		{
+			service: 'Database',
+			message: 'Connection timeout',
+			severity: 'error',
+			time: '15 minutes ago'
+		},
+		{
+			service: 'Auth Service',
+			message: 'Increased error rate',
+			severity: 'warning',
+			time: '1 hour ago'
 		}
-	}
+	]);
 
-	async function fetchDataWithRetry(retries = 5, interval = 5000) {
-		for (let i = 0; i < retries; i++) {
-			if (await checkHealth()) {
-				try {
-					await fetchTargets();
-					await fetchMetrics();
-					loading = false;
-					error = '';
-					return true;
-				} catch (e) {
-					console.error('Error fetching data:', e);
-				}
-			}
-			await new Promise((resolve) => setTimeout(resolve, interval));
-		}
-		loading = false;
-		error = 'Failed to fetch data after multiple attempts. Please try refreshing the page.';
-		return false;
-	}
-
-	async function handleRefreshClick() {
-		refreshing = true;
-		const success = await fetchDataWithRetry();
-		refreshing = false;
-		if (success) {
-			showNotification('Data refreshed successfully', 'success');
-		} else {
-			showNotification('Failed to refresh data', 'error');
-		}
-	}
-
-	function showNotification(message: string, type: 'success' | 'error') {
-		notification = { message, type };
-		setTimeout(() => {
-			notification = null;
-		}, 3000);
-	}
-
-	onMount(() => {
-		fetchDataWithRetry();
-	});
-
-	function getMaxDuration(metrics: Metrics): number {
-		return Math.max(
-			...Object.values(metrics).map((endpoints) =>
-				Math.max(...Object.values(endpoints).map((e) => e.Duration ?? 0))
-			),
-			0.1
-		);
-	}
-
-	$: maxDuration = getMaxDuration($metrics);
+	let topServices = $state([
+		{ name: 'Web API', status: 'Healthy', responseTime: '120ms' },
+		{ name: 'Database', status: 'Degraded', responseTime: '350ms' },
+		{ name: 'Auth Service', status: 'Healthy', responseTime: '80ms' },
+		{ name: 'Payment Gateway', status: 'Healthy', responseTime: '200ms' },
+		{ name: 'Notification Service', status: 'Healthy', responseTime: '90ms' }
+	]);
 </script>
 
-<svelte:head>
-	<title>Ekolod Dashboard</title>
-</svelte:head>
+<div class="p-4 space-y-6">
+	<h1 class="text-3xl font-bold">Dashboard</h1>
 
-<div class="mx-auto max-w-7xl space-y-4">
-	<header class="mb-8">
-		<div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-			<h1 class="text-base-content text-3xl font-bold">Dashboard</h1>
-			<div class="flex gap-2">
-				<div class="btn-group">
-					<button
-						class="btn btn-sm {$viewMode === 'grid' ? 'btn-active' : ''}"
-						on:click={() => ($viewMode = 'grid')}
-						title="Grid view"
-					>
-						<Grid class="h-4 w-4" />
-					</button>
-					<button
-						class="btn btn-sm {$viewMode === 'list' ? 'btn-active' : ''}"
-						on:click={() => ($viewMode = 'list')}
-						title="List view"
-					>
-						<List class="h-4 w-4" />
-					</button>
-					<button
-						class="btn btn-sm {$viewMode === 'chart' ? 'btn-active' : ''}"
-						on:click={() => ($viewMode = 'chart')}
-						title="Chart view"
-					>
-						<BarChart class="h-4 w-4" />
-					</button>
+	<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+		<div class="stat bg-base-100 shadow">
+			<div class="stat-figure text-primary">
+				<IconServices class="w-8 h-8" />
+			</div>
+			<div class="stat-title">Overall Health</div>
+			<div class="stat-value text-primary">{overallHealth}%</div>
+			<div class="stat-desc">{totalServices} Services Monitored</div>
+		</div>
+
+		<div class="stat bg-base-100 shadow">
+			<div class="stat-figure text-secondary">
+				<IconAlerts class="w-8 h-8" />
+			</div>
+			<div class="stat-title">Active Alerts</div>
+			<div class="stat-value text-secondary">{activeAlerts}</div>
+			<div class="stat-desc">Across all services</div>
+		</div>
+
+		<div class="stat bg-base-100 shadow">
+			<div class="stat-figure text-accent">
+				<IconCheck class="w-8 h-8" />
+			</div>
+			<div class="stat-title">Uptime</div>
+			<div class="stat-value">{uptime}%</div>
+			<div class="stat-desc">Last 30 days</div>
+		</div>
+	</div>
+
+	<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+		<div class="card bg-base-100 shadow-xl">
+			<div class="card-body">
+				<h2 class="card-title">Recent Alerts</h2>
+				<div class="overflow-x-auto">
+					<table class="table w-full">
+						<thead>
+							<tr>
+								<th>Service</th>
+								<th>Message</th>
+								<th>Severity</th>
+								<th>Time</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each recentAlerts as alert}
+								<tr>
+									<td>{alert.service}</td>
+									<td>{alert.message}</td>
+									<td>
+										<div class="badge badge-{alert.severity === 'error' ? 'error' : 'warning'}">
+											{alert.severity}
+										</div>
+									</td>
+									<td>{alert.time}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
 				</div>
-				<button
-					class="btn btn-primary btn-sm {refreshing ? 'loading' : ''}"
-					on:click={handleRefreshClick}
-					disabled={refreshing}
-				>
-					{#if !refreshing}
-						<RefreshCw class="mr-2 h-4 w-4" />
-					{/if}
-					Refresh
-				</button>
 			</div>
 		</div>
-		<p class="text-base-content/70 mt-2 text-sm">
-			Monitoring {Object.keys($metrics).length} services
-		</p>
-	</header>
 
-	{#if notification}
-		<div class="fixed bottom-4 right-4 z-50" transition:fly={{ y: 20, duration: 300 }}>
-			<div class="alert alert-{notification.type} shadow-lg">
-				<AlertCircle class="h-6 w-6" />
-				<span>{notification.message}</span>
+		<div class="card bg-base-100 shadow-xl">
+			<div class="card-body">
+				<h2 class="card-title">Top Services</h2>
+				<div class="overflow-x-auto">
+					<table class="table w-full">
+						<thead>
+							<tr>
+								<th>Service</th>
+								<th>Status</th>
+								<th>Response Time</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each topServices as service}
+								<tr>
+									<td>{service.name}</td>
+									<td>
+										<div class="badge badge-{service.status === 'Healthy' ? 'success' : 'warning'}">
+											{service.status}
+										</div>
+									</td>
+									<td>{service.responseTime}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
 			</div>
 		</div>
-	{/if}
-
-	{#if loading}
-		<div class="flex h-64 items-center justify-center">
-			<span class="loading loading-spinner loading-lg"></span>
-		</div>
-	{:else if error}
-		<div class="alert alert-error">
-			<AlertCircle class="h-6 w-6" />
-			<span>{error}</span>
-		</div>
-	{:else if $viewMode === 'grid'}
-		<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-			{#each Object.entries($metrics) as [service, endpoints]}
-				<ServiceGridItem {service} {endpoints} timeSeriesData={timeSeriesData[service]} />
-			{/each}
-		</div>
-	{:else if $viewMode === 'list'}
-		<ServiceTable metrics={$metrics} />
-	{:else if $viewMode === 'chart'}
-		<div class="bg-base-100 border-base-300 rounded-lg border p-6 shadow-sm">
-			<h2 class="mb-4 text-xl font-semibold">Response Times by Service</h2>
-			<div class="overflow-x-auto">
-				<svg width={Object.keys($metrics).length * 60 + 50} height="400" class="chart">
-					{#each Object.entries($metrics) as [service, endpoints], i}
-						{@const value = Object.values(endpoints)[0]?.Duration ?? 0}
-						{@const x = i * 60 + 25}
-						{@const y = 350 - (value / maxDuration) * 300}
-						<g transform="translate({x}, 0)">
-							<rect
-								width="40"
-								height={350 - y}
-								{y}
-								fill="hsl(var(--p) / 50%)"
-								stroke="hsl(var(--p))"
-							/>
-							<text x="20" y="370" text-anchor="middle" font-size="12">{service}</text>
-							<text x="20" y={y - 5} text-anchor="middle" font-size="12" fill="hsl(var(--p))"
-								>{value.toFixed(3)}</text
-							>
-						</g>
-					{/each}
-					<line
-						x1="20"
-						y1="350"
-						x2={Object.keys($metrics).length * 60 + 30}
-						y2="350"
-						stroke="currentColor"
-					/>
-					<text x="10" y="10" font-size="14" fill="currentColor">Response Time (s)</text>
-				</svg>
-			</div>
-		</div>
-	{/if}
+	</div>
 </div>

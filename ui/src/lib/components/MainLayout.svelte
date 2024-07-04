@@ -1,20 +1,14 @@
 <script>
-	import { onMount } from 'svelte';
-	import '../app.css';
-	import Sidebar from '$lib/components/Sidebar.svelte';
-	import TopBar from '$lib/components/TopBar.svelte';
+	import Sidebar from './Sidebar.svelte';
+	import TopBar from './TopBar.svelte';
 
-	const { children } = $props();
 	let isDrawerOpen = $state(false);
 
 	function toggleDrawer() {
 		isDrawerOpen = !isDrawerOpen;
 	}
 
-	onMount(() => {
-		const savedTheme = localStorage.getItem('theme') || 'light';
-		document.documentElement.setAttribute('data-theme', savedTheme);
-	});
+	const { children } = $props();
 </script>
 
 <div class="drawer lg:drawer-open">
@@ -23,7 +17,7 @@
 	<div class="drawer-content flex flex-col">
 		<TopBar {toggleDrawer} />
 
-		<main class="flex-1 overflow-y-auto bg-base-100 p-4">
+		<main class="flex-1 overflow-y-auto bg-base-100 p-4 lg:ml-64">
 			{@render children()}
 		</main>
 	</div>

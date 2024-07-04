@@ -39,9 +39,9 @@ services:
       - /app/node_modules
     environment:
       - EKOLOD_API_URL=${EKOLOD_API_URL}
+      - NODE_ENV=development
     depends_on:
       - ekolod-probe
-    command: npm run dev -- --host
     env_file:
       - .env
 
