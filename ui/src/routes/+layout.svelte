@@ -1,5 +1,4 @@
 <script>
-	import { onMount } from 'svelte';
 	import '../app.css';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import TopBar from '$lib/components/TopBar.svelte';
@@ -10,19 +9,14 @@
 	function toggleDrawer() {
 		isDrawerOpen = !isDrawerOpen;
 	}
-
-	onMount(() => {
-		const savedTheme = localStorage.getItem('theme') || 'light';
-		document.documentElement.setAttribute('data-theme', savedTheme);
-	});
 </script>
 
-<div class="drawer lg:drawer-open">
+<TopBar {toggleDrawer} />
+
+<div class="drawer lg:drawer-open pt-16">
 	<input id="main-drawer" type="checkbox" class="drawer-toggle" bind:checked={isDrawerOpen} />
 
 	<div class="drawer-content flex flex-col">
-		<TopBar {toggleDrawer} />
-
 		<main class="flex-1 overflow-y-auto bg-base-100 p-4">
 			{@render children()}
 		</main>
