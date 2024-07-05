@@ -53,66 +53,92 @@
 		{ id: 'top-services', title: 'Top Services' },
 		{ id: 'ai-insights', title: 'AI Insights' }
 	];
+
+	function getStatusColor(status) {
+		switch (status.toLowerCase()) {
+			case 'healthy':
+				return 'text-success';
+			case 'degraded':
+				return 'text-warning';
+			case 'error':
+				return 'text-error';
+			default:
+				return 'text-info';
+		}
+	}
+
+	function getSeverityColor(severity) {
+		switch (severity.toLowerCase()) {
+			case 'error':
+				return 'badge-error';
+			case 'warning':
+				return 'badge-warning';
+			default:
+				return 'badge-info';
+		}
+	}
 </script>
 
-<div class="flex relative">
-	<div class="flex-grow space-y-6 lg:mr-64">
+<div class="flex flex-col xl:flex-row">
+	<div class="flex-grow space-y-6 xl:pr-4">
 		<h1 class="text-3xl font-bold">Dashboard</h1>
 
-		<div id="overview" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+		<div id="overview" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
 			<div class="stat bg-base-100 shadow">
 				<div class="stat-figure text-primary">
-					<IconServices class="w-8 h-8" />
+					<IconServices class="w-8 h-8 sm:w-10 sm:h-10" />
 				</div>
-				<div class="stat-title">Overall Health</div>
-				<div class="stat-value text-primary">{overallHealth}%</div>
-				<div class="stat-desc">{totalServices} Services Monitored</div>
+				<div class="stat-title text-xs sm:text-sm">Overall Health</div>
+				<div class="stat-value text-primary text-2xl sm:text-3xl">{overallHealth}%</div>
+				<div class="stat-desc text-xs">{totalServices} Services Monitored</div>
 			</div>
 
 			<div class="stat bg-base-100 shadow">
 				<div class="stat-figure text-secondary">
-					<IconAlerts class="w-8 h-8" />
+					<IconAlerts class="w-8 h-8 sm:w-10 sm:h-10" />
 				</div>
-				<div class="stat-title">Active Alerts</div>
-				<div class="stat-value text-secondary">{activeAlerts}</div>
-				<div class="stat-desc">Across all services</div>
+				<div class="stat-title text-xs sm:text-sm">Active Alerts</div>
+				<div class="stat-value text-secondary text-2xl sm:text-3xl">{activeAlerts}</div>
+				<div class="stat-desc text-xs">Across all services</div>
 			</div>
 
 			<div class="stat bg-base-100 shadow">
 				<div class="stat-figure text-accent">
-					<IconCheck class="w-8 h-8" />
+					<IconCheck class="w-8 h-8 sm:w-10 sm:h-10" />
 				</div>
-				<div class="stat-title">Uptime</div>
-				<div class="stat-value">{uptime}%</div>
-				<div class="stat-desc">Last 30 days</div>
+				<div class="stat-title text-xs sm:text-sm">Uptime</div>
+				<div class="stat-value text-2xl sm:text-3xl">{uptime}%</div>
+				<div class="stat-desc text-xs">Last 30 days</div>
 			</div>
 		</div>
 
-		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+		<div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
 			<div id="recent-alerts" class="card bg-base-100 shadow-xl">
-				<div class="card-body">
-					<h2 class="card-title">Recent Alerts</h2>
+				<div class="card-body p-4">
+					<h2 class="card-title text-lg">Recent Alerts</h2>
 					<div class="overflow-x-auto">
-						<table class="table w-full">
+						<table class="table table-compact w-full">
 							<thead>
 								<tr>
-									<th>Service</th>
-									<th>Message</th>
-									<th>Severity</th>
-									<th>Time</th>
+									<th class="text-xs">Service</th>
+									<th class="text-xs">Message</th>
+									<th class="text-xs">Severity</th>
+									<th class="text-xs">Time</th>
 								</tr>
 							</thead>
 							<tbody>
 								{#each recentAlerts as alert}
 									<tr>
-										<td>{alert.service}</td>
-										<td>{alert.message}</td>
+										<td class="text-xs whitespace-normal">{alert.service}</td>
+										<td class="text-xs whitespace-normal break-words max-w-[150px]"
+											>{alert.message}</td
+										>
 										<td>
-											<div class="badge badge-{alert.severity === 'error' ? 'error' : 'warning'}">
+											<div class="badge {getSeverityColor(alert.severity)} text-xs">
 												{alert.severity}
 											</div>
 										</td>
-										<td>{alert.time}</td>
+										<td class="text-xs whitespace-nowrap">{alert.time}</td>
 									</tr>
 								{/each}
 							</tbody>
@@ -122,29 +148,27 @@
 			</div>
 
 			<div id="top-services" class="card bg-base-100 shadow-xl">
-				<div class="card-body">
-					<h2 class="card-title">Top Services</h2>
+				<div class="card-body p-4">
+					<h2 class="card-title text-lg">Top Services</h2>
 					<div class="overflow-x-auto">
-						<table class="table w-full">
+						<table class="table table-compact w-full">
 							<thead>
 								<tr>
-									<th>Service</th>
-									<th>Status</th>
-									<th>Response Time</th>
+									<th class="text-xs">Service</th>
+									<th class="text-xs">Status</th>
+									<th class="text-xs">Response Time</th>
 								</tr>
 							</thead>
 							<tbody>
 								{#each topServices as service}
 									<tr>
-										<td>{service.name}</td>
+										<td class="text-xs whitespace-normal">{service.name}</td>
 										<td>
-											<div
-												class="badge badge-{service.status === 'Healthy' ? 'success' : 'warning'}"
-											>
+											<div class="badge {getStatusColor(service.status)} text-xs">
 												{service.status}
 											</div>
 										</td>
-										<td>{service.responseTime}</td>
+										<td class="text-xs whitespace-nowrap">{service.responseTime}</td>
 									</tr>
 								{/each}
 							</tbody>
@@ -155,19 +179,21 @@
 		</div>
 
 		<div id="ai-insights" class="card bg-base-100 shadow-xl">
-			<div class="card-body">
-				<h2 class="card-title flex items-center">
+			<div class="card-body p-4">
+				<h2 class="card-title text-lg flex items-center">
 					<IconRobot class="w-6 h-6 mr-2" />
 					AI Insights
 				</h2>
 				<ul class="list-disc pl-5 space-y-2">
 					{#each aiInsights as insight}
-						<li>{insight}</li>
+						<li class="text-xs">{insight}</li>
 					{/each}
 				</ul>
 			</div>
 		</div>
 	</div>
 
-	<SecondaryNav {sections} />
+	<div class="hidden xl:block xl:w-64">
+		<SecondaryNav {sections} />
+	</div>
 </div>

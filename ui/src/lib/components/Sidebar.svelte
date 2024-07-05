@@ -56,9 +56,9 @@
 	]);
 </script>
 
-<div class="bg-base-200 text-base-content w-64 min-h-full border-r border-base-300">
+<div class="bg-base-100 text-base-content w-80 min-h-screen z-40 scroll-smooth md:scroll-auto">
 	<div class="p-4">
-		<h1 class="text-2xl font-bold">Ekolod</h1>
+		<a href="/" class="btn btn-ghost normal-case text-2xl">Ekolod</a>
 	</div>
 	<ul class="menu p-4 w-full">
 		{#each menuItems as item}

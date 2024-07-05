@@ -9,10 +9,12 @@
 	const themes = [
 		{ name: 'Light', value: 'light' },
 		{ name: 'Dark', value: 'dark' },
-		{ name: 'Retro', value: 'retro' },
+		{ name: 'Corporate', value: 'corporate' },
 		{ name: 'Cyberpunk', value: 'cyberpunk' },
 		{ name: 'Valentine', value: 'valentine' },
-		{ name: 'Aqua', value: 'aqua' }
+		{ name: 'Aqua', value: 'aqua' },
+		{ name: 'Forest', value: 'forest' },
+		{ name: 'Nord', value: 'nord' }
 	];
 
 	onMount(() => {

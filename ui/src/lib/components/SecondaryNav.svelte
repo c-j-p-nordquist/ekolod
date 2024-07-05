@@ -16,15 +16,15 @@
 	}
 </script>
 
-<div class="hidden lg:block w-64 p-4 border-l bg-base-100">
-	<div class="fixed top-16 w-64">
+<div class="w-64 p-4 bg-base-100 border-l border-base-300">
+	<div class="sticky top-20">
 		<h3 class="text-lg font-semibold mb-4">On this page</h3>
 		<ul class="space-y-2">
 			{#each sections as section}
 				<li>
 					<a
 						href="#{section.id}"
-						class="text-base-content hover:text-primary transition-colors duration-200"
+						class="text-sm text-base-content hover:text-primary transition-colors duration-200"
 						onclick={(event) => handleClick(event, section.id)}
 					>
 						{section.title}

@@ -6,12 +6,12 @@
 	const { toggleDrawer } = $props();
 </script>
 
-<div class="navbar bg-base-100 shadow-sm fixed top-0 left-0 right-0 z-50">
+<div class="navbar bg-base-100 z-50 sticky top-0">
 	<div class="flex-1">
 		<button class="btn btn-square btn-ghost lg:hidden" onclick={toggleDrawer}>
 			<IconMenu class="w-6 h-6" />
 		</button>
-		<a href="/" class="btn btn-ghost normal-case text-xl">Ekolod</a>
+		<a href="/" class="sm:hidden btn btn-ghost normal-case text-2xl">Ekolod</a>
 	</div>
 	<div class="flex-none gap-2">
 		<button type="button" class="btn btn-ghost btn-circle" aria-label="Notifications">
