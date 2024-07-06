@@ -1,1 +1,0 @@
-export const API_URL = (import.meta.env.EKOLOD_API_URL as string) || 'http://localhost:8080';
